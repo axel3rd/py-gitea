@@ -1,6 +1,7 @@
 from unittest import TestCase
 import pytest
 from utils import suid
+from packaging.version import Version
 
 from gitea import (
     Gitea,
@@ -12,6 +13,7 @@ from gitea import NotFoundException
 
 
 class BasicGiteaFunctions(TestCase):
+
     def setUp(self):
         self.test_org_name = "org_public_" + suid()
         self.test_user_name = "user_" + suid()
@@ -22,7 +24,7 @@ class BasicGiteaFunctions(TestCase):
             g = Gitea("http://localhost:3000", open(".token", "r").read().strip())
             print("Gitea Version: " + g.get_version())
             print("API-Token belongs to user: " + g.get_user().username)
-        except:
+        except BaseException:
             assert (
                 False
             ), "Gitea could not load. \
@@ -31,7 +33,7 @@ class BasicGiteaFunctions(TestCase):
                         ?"
         self.g = g
         self.user = g.create_user(
-            self.test_user_name,f"{self.test_user_name}@example.org", "asdas.passwd", send_notify=False)
+            self.test_user_name, f"{self.test_user_name}@example.org", "asdas.passwd", send_notify=False)
         self.org = g.create_org(self.user, self.test_org_name, "some-desc", "loc")
         self.repo = g.create_repo(self.org, self.test_repo_name, "user owned repo")
 
@@ -102,6 +104,8 @@ class BasicGiteaFunctions(TestCase):
         assert not org.full_name
 
     def test_org_get_public_members(self):
+        if Version(self.g.get_version()) < Version("1.24"):
+            pytest.skip("feature requires version >= 1.24")
         org = Organization.request(self.g, self.test_org_name)
         members = org.get_public_members()
         assert members
@@ -121,7 +125,7 @@ class BasicGiteaFunctions(TestCase):
         assert org2.website == "http:\\\\testurl.com"
 
     def test_user_teams(self):
-        team = self.g.create_team(self.org, self.test_team_name,"A testing team for testsing teams")
+        team = self.g.create_team(self.org, self.test_team_name, "A testing team for testsing teams")
         team.add_user(self.user)
         teams = self.user.get_teams()
         assert team in teams
